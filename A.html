@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>نقشه اردستان</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background-color: #f0f0f0;
+      font-family: Arial, sans-serif;
+    }
+    #map {
+      height: 80%;
+      width: 100%;
+    }
+    #locate-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background-color: white;
+      border: none;
+      padding: 10px;
+      cursor: pointer;
+      box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+    }
+    #console {
+      width: 100%;
+      background-color: #eee;
+      padding: 10px;
+      border-top: 1px solid #ccc;
+      max-height: 20%;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <button id="locate-btn">موقعیت فعلی من</button>
+  <div id="console"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+  <script>
+    var map = L.map('map').setView([33.357249, 52.369318], 15); // موقعیت نقشه اردستان
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    var startPoint, endPoint, routeControl;
+
+    function createCircle(latlng, color) {
+      return L.circleMarker(latlng, {
+        radius: 10,
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.5,
+        className: 'custom-popup'
+      }).addTo(map);
+    }
+
+    map.on('click', function(e) {
+      if (!startPoint) {
+        startPoint = createCircle(e.latlng, 'blue');
+        startPoint.bindPopup("مبدا", {className: 'custom-popup'}).openPopup();
+      } else if (!endPoint) {
+        endPoint = createCircle(e.latlng, 'red');
+        endPoint.bindPopup("مقصد", {className: 'custom-popup'}).openPopup();
+
+        routeControl = L.Routing.control({
+          waypoints: [
+            startPoint.getLatLng(),
+            endPoint.getLatLng()
+          ],
+          router: L.Routing.osrmv1({
+            serviceUrl: 'https://router.project-osrm.org/route/v1'
+          }),
+          lineOptions: {
+            styles: [{ color: 'blue', opacity: 0.6, weight: 4 }]
+          },
+          createMarker: function() { return null; }
+        }).addTo(map);
+      }
+    });
+
+    function showConsoleMessage(message) {
+      var consoleDiv = document.getElementById('console');
+      consoleDiv.innerHTML += '<div>' + message + '</div>';
+    }
+
+    document.getElementById('locate-btn').onclick = function() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+          var latlng = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+          
+          var radius = 100; // اندازه بزرگ دایره
+          
+          L.circle(latlng, {
+            radius: radius,
+            color: 'green',
+            fillColor: '#0f0',
+            fillOpacity: 0.5
+          }).addTo(map).bindPopup("موقعیت فعلی شما. دقت تقریبی: " + position.coords.accuracy + " متر").openPopup();
+
+          map.setView(latlng, 15);
+        }, function(error) {
+          showConsoleMessage("مشکلی در یافتن موقعیت مکانی شما وجود دارد: " + error.message + ". لطفا مطمئن شوید که وب‌سایت از طریق HTTPS بارگذاری شده است.");
+        });
+      } else {
+        showConsoleMessage("مرورگر شما از قابلیت Geolocation پشتیبانی نمی‌کند.");
+      }
+    };
+  </script>
+</body>
+</html>
